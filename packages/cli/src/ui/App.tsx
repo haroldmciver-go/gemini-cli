@@ -69,6 +69,7 @@ import {
 import { useGitBranchName } from './hooks/useGitBranchName.js';
 import { useBracketedPaste } from './hooks/useBracketedPaste.js';
 import { useTextBuffer } from './components/shared/text-buffer.js';
+import { useAtCommandProcessor } from './hooks/useAtCommandProcessor.js';
 import * as fs from 'fs';
 import { UpdateNotification } from './components/UpdateNotification.js';
 import {
@@ -525,15 +526,37 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
   const { elapsedTime, currentLoadingPhrase } =
     useLoadingIndicator(streamingState);
   const showAutoAcceptIndicator = useAutoAcceptIndicator({ config });
+  const { processCommand: processAtCommand } = useAtCommandProcessor();
 
   const handleFinalSubmit = useCallback(
     (submittedValue: string) => {
       const trimmedValue = submittedValue.trim();
-      if (trimmedValue.length > 0) {
+      if (trimmedValue.length === 0) {
+        return;
+      }
+
+      if (trimmedValue.startsWith('@')) {
+        const { finalPrompt, error } = processAtCommand(trimmedValue);
+
+        if (error) {
+          addItem(
+            {
+              type: MessageType.ERROR,
+              text: error,
+            },
+            Date.now(),
+          );
+          return;
+        }
+
+        if (finalPrompt) {
+          submitQuery(finalPrompt);
+        }
+      } else {
         submitQuery(trimmedValue);
       }
     },
-    [submitQuery],
+    [submitQuery, processAtCommand, addItem],
   );
 
   const logger = useLogger();

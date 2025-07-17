@@ -11,7 +11,7 @@ import {
   createTransport,
   generateValidName,
   isEnabled,
-  discoverTools,
+  discoverToolsAndPrompts,
 } from './mcp-client.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import * as SdkClientStdioLib from '@modelcontextprotocol/sdk/client/stdio.js';
@@ -27,22 +27,43 @@ describe('mcp-client', () => {
     vi.restoreAllMocks();
   });
 
-  describe('discoverTools', () => {
-    it('should discover tools', async () => {
+  describe('discoverToolsAndPrompts', () => {
+    it('should discover both tools and prompts', async () => {
       const mockedClient = {} as unknown as ClientLib.Client;
       const mockedMcpToTool = vi.mocked(GenAiLib.mcpToTool).mockReturnValue({
         tool: () => ({
           functionDeclarations: [
             {
               name: 'testFunction',
+              description: 'A regular tool.',
+            },
+            {
+              name: '__prompt_testPrompt',
+              description: 'A prompt template: {{arg}}',
+              parametersJsonSchema: {
+                type: 'object',
+                properties: { arg: { type: 'string' } },
+                required: ['arg'],
+              },
             },
           ],
         }),
       } as unknown as GenAiLib.CallableTool);
 
-      const tools = await discoverTools('test-server', {}, mockedClient);
+      const { tools, prompts } = await discoverToolsAndPrompts(
+        'test-server',
+        {},
+        mockedClient,
+      );
 
       expect(tools.length).toBe(1);
+      expect(tools[0].name).toBe('test-server__testFunction');
+
+      expect(prompts.length).toBe(1);
+      expect(prompts[0].name).toBe('testPrompt');
+      expect(prompts[0].template).toBe('A prompt template: {{arg}}');
+      expect(prompts[0].parameters.required).toEqual(['arg']);
+
       expect(mockedMcpToTool).toHaveBeenCalledOnce();
     });
   });

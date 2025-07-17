@@ -38,6 +38,7 @@ export * from './utils/quotaErrorDetection.js';
 export * from './services/fileDiscoveryService.js';
 export * from './services/gitService.js';
 export * from './services/ideContext.js';
+export * from './services/prompt-registry.js';
 
 // Export base tool definitions
 export * from './tools/tools.js';
@@ -57,6 +58,7 @@ export * from './tools/web-search.js';
 export * from './tools/read-many-files.js';
 export * from './tools/mcp-client.js';
 export * from './tools/mcp-tool.js';
+export * from './tools/mcp-protocol.js';
 
 // Export telemetry functions
 export * from './telemetry/index.js';

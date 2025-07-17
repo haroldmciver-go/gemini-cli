@@ -5,6 +5,7 @@
  */
 
 import {
+  Content,
   ToolCallConfirmationDetails,
   ToolResultDisplay,
 } from '@google/gemini-cli-core';
@@ -225,6 +226,12 @@ export type SlashCommandProcessorResult =
       type: 'schedule_tool';
       toolName: string;
       toolArgs: Record<string, unknown>;
+    }
+  | {
+      type: 'prompt';
+      prompt: string;
+      promptType: 'user' | 'tool';
+      context?: Content[];
     }
   | {
       type: 'handled'; // Indicates the command was processed and no further action is needed.
