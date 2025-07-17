@@ -2,7 +2,7 @@
 
 [![Gemini CLI CI](https://github.com/google-gemini/gemini-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/google-gemini/gemini-cli/actions/workflows/ci.yml)
 
-![Gemini CLI Screenshot](./docs/assets/gemini-screenshot.png)
+![Gemini CLI Screenshot](https://raw.githubusercontent.com/google-gemini/gemini-cli/refs/heads/main/docs/assets/gemini-screenshot.png)
 
 This repository contains the Gemini CLI, a command-line AI workflow tool that connects to your
 tools, understands your code and accelerates your workflows.
@@ -26,7 +26,7 @@ With the Gemini CLI you can:
    npx https://github.com/google-gemini/gemini-cli
    ```
 
-   Or install it with:
+   Or install the [Gemini CLI package](https://www.npmjs.com/package/@google/gemini-cli) with NPM:
 
    ```bash
    npm install -g @google/gemini-cli
