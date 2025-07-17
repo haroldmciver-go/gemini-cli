@@ -264,6 +264,12 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
         return;
       }
 
+      // If the command is a perfect match, pressing enter should execute it.
+      if (completion.isPerfectMatch && key.name === 'return') {
+        handleSubmitAndClear(buffer.text);
+        return;
+      }
+
       if (completion.showSuggestions) {
         if (key.name === 'up') {
           completion.navigateUp();
@@ -275,12 +281,6 @@ export const InputPrompt: React.FC<InputPromptProps> = ({
         }
 
         if (key.name === 'tab' || (key.name === 'return' && !key.ctrl)) {
-          // If the command is a perfect match, pressing enter should execute it.
-          if (completion.isPerfectMatch && key.name === 'return') {
-            handleSubmitAndClear(buffer.text);
-            return;
-          }
-
           if (completion.suggestions.length > 0) {
             const targetIndex =
               completion.activeSuggestionIndex === -1
