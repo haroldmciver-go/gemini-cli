@@ -41,6 +41,14 @@ export interface CommandContext {
      * @param item The history item to display as pending, or `null` to clear.
      */
     setPendingItem: (item: HistoryItemWithoutId | null) => void;
+    /**
+     * Loads a new set of history items, replacing the current history.
+     *
+     * @param history The array of history items to load.
+     */
+    loadHistory: UseHistoryManagerReturn['loadHistory'];
+    /** Toggles a special display mode. */
+    toggleCorgiMode: () => void;
   };
   // Session-specific data
   session: {
@@ -106,8 +114,8 @@ export type SlashCommandActionReturn =
   | MessageActionReturn
   | QuitActionReturn
   | OpenDialogActionReturn
-  | LoadHistoryActionReturn
-  | PromptActionReturn;
+  | LoadHistoryActionReturn;
+
 // The standardized contract for any command in the system.
 export interface SlashCommand {
   name: string;
