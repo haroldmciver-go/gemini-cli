@@ -29,22 +29,43 @@ describe('mcp-client', () => {
 
   describe('discoverToolsAndPrompts', () => {
     it('should discover both tools and prompts', async () => {
-      const mockedClient = {} as unknown as ClientLib.Client;
+      const mockedClient = {
+        request: vi.fn((request, _schema) => {
+          if (request.method === 'tools/list') {
+            return Promise.resolve({
+              tools: [
+                {
+                  name: 'testFunction',
+                  description: 'A regular tool.',
+                },
+              ],
+            });
+          }
+          if (request.method === 'prompts/list') {
+            return Promise.resolve({
+              prompts: [
+                {
+                  name: 'testPrompt',
+                  description: 'A prompt template: {{arg}}',
+                  parameters: {
+                    type: 'object',
+                    properties: { arg: { type: 'string' } },
+                    required: ['arg'],
+                  },
+                },
+              ],
+            });
+          }
+          return Promise.resolve({});
+        }),
+      } as unknown as ClientLib.Client;
+
       const mockedMcpToTool = vi.mocked(GenAiLib.mcpToTool).mockReturnValue({
         tool: () => ({
           functionDeclarations: [
             {
               name: 'testFunction',
               description: 'A regular tool.',
-            },
-            {
-              name: '__prompt_testPrompt',
-              description: 'A prompt template: {{arg}}',
-              parametersJsonSchema: {
-                type: 'object',
-                properties: { arg: { type: 'string' } },
-                required: ['arg'],
-              },
             },
           ],
         }),
@@ -61,7 +82,7 @@ describe('mcp-client', () => {
 
       expect(prompts.length).toBe(1);
       expect(prompts[0].name).toBe('testPrompt');
-      expect(prompts[0].template).toBe('A prompt template: {{arg}}');
+      expect(prompts[0].description).toBe('A prompt template: {{arg}}');
       expect(prompts[0].parameters.required).toEqual(['arg']);
 
       expect(mockedMcpToTool).toHaveBeenCalledOnce();

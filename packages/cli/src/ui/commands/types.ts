@@ -114,7 +114,8 @@ export type SlashCommandActionReturn =
   | MessageActionReturn
   | QuitActionReturn
   | OpenDialogActionReturn
-  | LoadHistoryActionReturn;
+  | LoadHistoryActionReturn
+  | PromptActionReturn;
 
 // The standardized contract for any command in the system.
 export interface SlashCommand {

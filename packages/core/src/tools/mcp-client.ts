@@ -352,7 +352,7 @@ export async function discoverToolsAndPrompts(
 
 import { z } from 'zod';
 
-export async function mcpRequest<T, U>(
+export async function mcpRequest<T, U extends object>(
   serverName: string,
   method: string,
   params: T,
