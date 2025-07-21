@@ -33,7 +33,7 @@ if (!existsSync(join(root, 'node_modules'))) {
 // build all workspaces/packages
 execSync('npm run generate', { stdio: 'inherit', cwd: root });
 execSync('npm run build --workspaces', { stdio: 'inherit', cwd: root });
-execSync('npx --yes @vscode/vsce package --no-dependencies', {
+execSync('npx --yes @vscode/vsce@2.15.0 package --no-dependencies', {
   stdio: 'inherit',
   cwd: join(root, 'packages', 'vscode-ide-companion'),
 });
