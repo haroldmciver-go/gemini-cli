@@ -696,11 +696,9 @@ describe('useSlashCommandProcessor', () => {
       const result = setupProcessorHook([], [fileCommand], [mcpCommand]);
 
       await waitFor(() => {
-        // ✅ CHANGE: Expect 2 commands now, not 1.
         expect(result.current.slashCommands).toHaveLength(2);
       });
 
-      // ✅ ADD: Verify both commands exist in their correct forms.
       const originalCmd = result.current.slashCommands.find(
         (cmd) => cmd.name === 'override',
       );
@@ -709,11 +707,10 @@ describe('useSlashCommandProcessor', () => {
       );
 
       expect(originalCmd).toBeDefined();
-      expect(originalCmd?.description).toBe('file'); // The file command keeps the name
+      expect(originalCmd?.description).toBe('file');
       expect(renamedCmd).toBeDefined();
-      expect(renamedCmd?.description).toBe('mcp'); // The MCP command is renamed
+      expect(renamedCmd?.description).toBe('mcp');
 
-      // This part of the test remains valid: running `/override` should trigger the file command.
       await act(async () => {
         await result.current.handleSlashCommand('/override');
       });

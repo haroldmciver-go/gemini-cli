@@ -26,14 +26,6 @@ export class PromptRegistry {
   }
 
   /**
-   * Get the definition of a specific prompt.
-   * If multiple prompts share the same name, the first one found is returned.
-   */
-  getPrompt(name: string): DiscoveredMCPPrompt | undefined {
-    return this.prompts.find((p) => p.name === name);
-  }
-
-  /**
    * Returns an array of prompts registered from a specific MCP server.
    */
   getPromptsByServer(serverName: string): DiscoveredMCPPrompt[] {

@@ -102,8 +102,10 @@ const getMcpStatus = async (
       (tool) =>
         tool instanceof DiscoveredMCPTool && tool.serverName === serverName,
     ) as DiscoveredMCPTool[];
+    // Get prompts by filtering the main command list for commands from this server.
+    // This correctly reflects any de-duplication done at startup.
     const serverPrompts = allCommands.filter(
-      (cmd) => cmd.serverName === serverName,
+      (cmd) => 'serverName' in cmd && cmd.serverName === serverName,
     );
 
     const status = getMCPServerStatus(serverName);
@@ -251,8 +253,11 @@ const getMcpStatus = async (
       }
       message += `  ${RESET_COLOR}Prompts:${RESET_COLOR}\n`;
       serverPrompts.forEach((prompt) => {
-        const originalName = prompt.originalName || prompt.name;
+        // Use originalName (if present) for display; fallback to the active name.
+        const originalName =
+          ('originalName' in prompt && prompt.originalName) || prompt.name;
         let promptLine = `  - ${COLOR_CYAN}${originalName}${RESET_COLOR}`;
+        // If the prompt was renamed, show its active name in parentheses.
         if (prompt.name !== originalName) {
           promptLine += ` (${COLOR_GREEN}/${prompt.name}${RESET_COLOR})`;
         }
