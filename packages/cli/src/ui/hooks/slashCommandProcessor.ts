@@ -221,6 +221,15 @@ export const useSlashCommandProcessor = (
           newName = `${mcpCmd.serverName}_${mcpCmd.name}`;
         }
 
+        // If the prefixed name also collides, the command would be shadowed.
+        // To prevent this, we log a warning and skip adding the command.
+        if (commandNames.has(newName)) {
+          console.warn(
+            `Command name collision for MCP prompt "${originalName}" from server "${mcpCmd.serverName}". The prefixed name "/${newName}" is also in use. This prompt will be unavailable.`,
+          );
+          continue;
+        }
+
         commandNames.add(newName);
         finalCommands.push({
           ...mcpCmd,
