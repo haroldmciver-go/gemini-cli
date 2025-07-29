@@ -12,7 +12,6 @@ import {
   MessageActionReturn,
 } from './types.js';
 import {
-  DiscoveredMCPPrompt,
   DiscoveredMCPTool,
   getMCPDiscoveryState,
   getMCPServerStatus,
