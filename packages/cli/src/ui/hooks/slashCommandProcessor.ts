@@ -25,7 +25,6 @@ import {
 } from '../types.js';
 import { LoadedSettings } from '../../config/settings.js';
 import { type CommandContext, type SlashCommand } from '../commands/types.js';
-import { CommandService } from '../../services/CommandService.js';
 import { BuiltinCommandLoader } from '../../services/BuiltinCommandLoader.js';
 import { FileCommandLoader } from '../../services/FileCommandLoader.js';
 import { McpPromptLoader } from '../../services/McpPromptLoader.js';
@@ -181,6 +180,7 @@ export const useSlashCommandProcessor = (
       toggleCorgiMode,
       toggleVimEnabled,
       sessionShellAllowlist,
+      commands,
     ],
   );
 
@@ -191,8 +191,6 @@ export const useSlashCommandProcessor = (
       const builtinLoader = new BuiltinCommandLoader(config);
       const fileLoader = new FileCommandLoader(config);
 
-      // CommandService.create used to do this. We now do it here to allow
-      // for de-duplication logic before the commands are displayed.
       const [mcpCommands, builtinCommands, fileCommands] = await Promise.all([
         mcpLoader.loadCommands(controller.signal),
         builtinLoader.loadCommands(controller.signal),
@@ -224,9 +222,10 @@ export const useSlashCommandProcessor = (
         finalCommands.push({
           ...mcpCmd,
           name: newName,
-          originalName: originalName,
+          originalName,
         });
       }
+      setCommands(finalCommands.sort((a, b) => a.name.localeCompare(b.name)));
     };
 
     load();

@@ -18,14 +18,6 @@ export class PromptRegistry {
   }
 
   /**
-   * Returns an array of all registered and discovered prompt instances.
-   * Name conflicts are handled by the slash command processor.
-   */
-  getAllPrompts(): DiscoveredMCPPrompt[] {
-    return [...this.prompts].sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  /**
    * Returns an array of prompts registered from a specific MCP server.
    */
   getPromptsByServer(serverName: string): DiscoveredMCPPrompt[] {

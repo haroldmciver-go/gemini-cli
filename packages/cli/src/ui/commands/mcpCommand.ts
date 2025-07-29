@@ -102,8 +102,7 @@ const getMcpStatus = async (
       (tool) =>
         tool instanceof DiscoveredMCPTool && tool.serverName === serverName,
     ) as DiscoveredMCPTool[];
-    // Get prompts by filtering the main command list for commands from this server.
-    // This correctly reflects any de-duplication done at startup.
+
     const serverPrompts = allCommands.filter(
       (cmd) => 'serverName' in cmd && cmd.serverName === serverName,
     );
