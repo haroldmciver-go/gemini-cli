@@ -66,6 +66,7 @@ export interface CommandContext {
     /** A transient list of shell commands the user has approved for this session. */
     sessionShellAllowlist: Set<string>;
   };
+  commands?: readonly SlashCommand[];
 }
 
 /**
@@ -154,6 +155,8 @@ export interface SlashCommand {
   name: string;
   altNames?: string[];
   description: string;
+  originalName?: string;
+  serverName?: string;
 
   kind: CommandKind;
 

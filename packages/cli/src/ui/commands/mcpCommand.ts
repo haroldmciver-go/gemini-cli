@@ -97,13 +97,15 @@ const getMcpStatus = async (
   message += 'Configured MCP servers:\n\n';
 
   const allTools = toolRegistry.getAllTools();
+  const allCommands = context.commands || [];
   for (const serverName of serverNames) {
     const serverTools = allTools.filter(
       (tool) =>
         tool instanceof DiscoveredMCPTool && tool.serverName === serverName,
     ) as DiscoveredMCPTool[];
-    const promptRegistry = await config.getPromptRegistry();
-    const serverPrompts = promptRegistry.getPromptsByServer(serverName) || [];
+    const serverPrompts = allCommands.filter(
+      (cmd) => cmd.serverName === serverName,
+    );
 
     const status = getMCPServerStatus(serverName);
 
@@ -206,7 +208,7 @@ const getMcpStatus = async (
     message += RESET_COLOR;
 
     if (serverTools.length > 0) {
-      message += `  ${COLOR_CYAN}Tools:${RESET_COLOR}\n`;
+      message += `  ${RESET_COLOR}Tools:${RESET_COLOR}\n`;
       serverTools.forEach((tool) => {
         if (showDescriptions && tool.description) {
           // Format tool name in cyan using simple ANSI cyan color
@@ -248,10 +250,16 @@ const getMcpStatus = async (
       if (serverTools.length > 0) {
         message += '\n';
       }
-      message += `  ${COLOR_CYAN}Prompts:${RESET_COLOR}\n`;
-      serverPrompts.forEach((prompt: DiscoveredMCPPrompt) => {
+      message += `  ${RESET_COLOR}Prompts:${RESET_COLOR}\n`;
+      serverPrompts.forEach((prompt) => {
+        const originalName = prompt.originalName || prompt.name;
+        let promptLine = `  - ${COLOR_CYAN}${originalName}${RESET_COLOR}`;
+        if (prompt.name !== originalName) {
+          promptLine += ` (${COLOR_GREEN}/${prompt.name}${RESET_COLOR})`;
+        }
+
         if (showDescriptions && prompt.description) {
-          message += `  - ${COLOR_CYAN}${prompt.name}${RESET_COLOR}`;
+          message += `${promptLine}`;
           const descLines = prompt.description.trim().split('\n');
           if (descLines) {
             message += ':\n';
@@ -262,7 +270,7 @@ const getMcpStatus = async (
             message += '\n';
           }
         } else {
-          message += `  - ${COLOR_CYAN}${prompt.name}${RESET_COLOR}\n`;
+          message += `${promptLine}\n`;
         }
       });
     }

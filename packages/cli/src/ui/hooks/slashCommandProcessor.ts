@@ -163,6 +163,7 @@ export const useSlashCommandProcessor = (
         stats: session.stats,
         sessionShellAllowlist,
       },
+      commands,
     }),
     [
       config,
@@ -180,22 +181,55 @@ export const useSlashCommandProcessor = (
       toggleCorgiMode,
       toggleVimEnabled,
       sessionShellAllowlist,
+      commands,
     ],
   );
 
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
-      const loaders = [
-        new McpPromptLoader(config),
-        new BuiltinCommandLoader(config),
-        new FileCommandLoader(config),
-      ];
-      const commandService = await CommandService.create(
-        loaders,
-        controller.signal,
-      );
-      setCommands(commandService.getCommands());
+      const mcpLoader = new McpPromptLoader(config);
+      const builtinLoader = new BuiltinCommandLoader(config);
+      const fileLoader = new FileCommandLoader(config);
+
+      // CommandService.create used to do this. We now do it here to allow
+      // for de-duplication logic before the commands are displayed.
+      const [mcpCommands, builtinCommands, fileCommands] = await Promise.all([
+        mcpLoader.loadCommands(controller.signal),
+        builtinLoader.loadCommands(controller.signal),
+        fileLoader.loadCommands(controller.signal),
+      ]);
+
+      const finalCommands: SlashCommand[] = [];
+      const commandNames = new Set<string>();
+
+      // Add builtin and file commands first, collecting their names.
+      for (const cmd of [...builtinCommands, ...fileCommands]) {
+        finalCommands.push(cmd);
+        commandNames.add(cmd.name);
+        cmd.altNames?.forEach((name) => commandNames.add(name));
+      }
+
+      // Process MCP-backed commands, de-duplicating names as needed.
+      for (const cmd of mcpCommands) {
+        const mcpCmd = cmd;
+        const originalName = mcpCmd.name;
+        let newName = originalName;
+
+        // If the name is already taken by any other command, prepend the server name.
+        if (commandNames.has(newName)) {
+          newName = `${mcpCmd.serverName}_${mcpCmd.name}`;
+        }
+
+        commandNames.add(newName);
+        finalCommands.push({
+          ...mcpCmd,
+          name: newName,
+          originalName: originalName,
+        });
+      }
+
+      setCommands(finalCommands.sort((a, b) => a.name.localeCompare(b.name)));
     };
 
     load();
