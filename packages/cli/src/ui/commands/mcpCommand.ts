@@ -252,14 +252,15 @@ const getMcpStatus = async (
       }
       message += `  ${RESET_COLOR}Prompts:${RESET_COLOR}\n`;
       serverPrompts.forEach((prompt) => {
-        // Use displayName for the potentially conflict-aware name of the prompt.
+        // `name` is the active, invokable command name.
+        // `displayName` is the original prompt name for display.
         const name = prompt.name;
         const displayName =
           ('displayName' in prompt && prompt.displayName) || prompt.name;
-        let promptLine = `  - ${COLOR_CYAN}${name}${RESET_COLOR}`;
+        let promptLine = `  - ${COLOR_CYAN}${displayName}${RESET_COLOR}`;
         // If the prompt was renamed, show its active name in parentheses.
         if (name !== displayName) {
-          promptLine += ` (${COLOR_GREEN}/${displayName}${RESET_COLOR})`;
+          promptLine += ` (${COLOR_GREEN}/${name}${RESET_COLOR})`;
         }
 
         if (showDescriptions && prompt.description) {

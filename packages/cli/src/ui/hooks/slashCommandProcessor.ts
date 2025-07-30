@@ -224,7 +224,7 @@ export const useSlashCommandProcessor = (
         finalCommands.push({
           ...mcpCmd,
           name: newName,
-          originalName,
+          displayName: originalName,
         });
       }
       setCommands(
