@@ -202,9 +202,27 @@ export const useSlashCommandProcessor = (
       const finalCommands: SlashCommand[] = [];
       const commandNames = new Set<string>();
 
-      // Add builtin and file commands first, collecting their names.
-      for (const cmd of [...builtinCommands, ...fileCommands]) {
-        finalCommands.push(cmd);
+      // Collect file command names and add them to the final list.
+      const fileCommandNames = new Set<string>(
+        fileCommands.map((cmd) => cmd.name),
+      );
+      finalCommands.push(...fileCommands);
+
+      // Process and add builtin commands, renaming on conflict.
+      for (const cmd of builtinCommands) {
+        if (fileCommandNames.has(cmd.name)) {
+          finalCommands.push({
+            ...cmd,
+            name: `builtin:${cmd.name}`,
+            displayName: cmd.name,
+          });
+        } else {
+          finalCommands.push(cmd);
+        }
+      }
+
+      // Now collect all names for MCP command processing.
+      for (const cmd of finalCommands) {
         commandNames.add(cmd.name);
         cmd.altNames?.forEach((name) => commandNames.add(name));
       }

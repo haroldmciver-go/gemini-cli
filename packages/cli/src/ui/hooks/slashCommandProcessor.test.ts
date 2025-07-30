@@ -59,7 +59,6 @@ import { vi, describe, it, expect, beforeEach, type Mock } from 'vitest';
 import { useSlashCommandProcessor } from './slashCommandProcessor.js';
 import {
   CommandContext,
-  CommandKind,
   ConfirmShellCommandsActionReturn,
   SlashCommand,
 } from '../commands/types.js';
@@ -70,13 +69,9 @@ import { BuiltinCommandLoader } from '../../services/BuiltinCommandLoader.js';
 import { FileCommandLoader } from '../../services/FileCommandLoader.js';
 import { McpPromptLoader } from '../../services/McpPromptLoader.js';
 
-const createTestCommand = (
-  overrides: Partial<SlashCommand>,
-  kind: CommandKind = CommandKind.BUILT_IN,
-): SlashCommand => ({
+const createTestCommand = (overrides: Partial<SlashCommand>): SlashCommand => ({
   name: 'test',
   description: 'a test command',
-  kind,
   ...overrides,
 });
 
@@ -87,12 +82,14 @@ describe('useSlashCommandProcessor', () => {
   const mockSetShowHelp = vi.fn();
   const mockOpenAuthDialog = vi.fn();
   const mockSetQuittingMessages = vi.fn();
+  const mockSetIsProcessing = vi.fn();
 
+  const mockSetHistory = vi.fn().mockResolvedValue(undefined);
   const mockConfig = {
     getProjectRoot: vi.fn(() => '/mock/cwd'),
     getSessionId: vi.fn(() => 'test-session'),
     getGeminiClient: vi.fn(() => ({
-      setHistory: vi.fn().mockResolvedValue(undefined),
+      setHistory: mockSetHistory,
     })),
     getExtensions: vi.fn(() => []),
   } as unknown as Config;
@@ -102,6 +99,8 @@ describe('useSlashCommandProcessor', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (vi.mocked(BuiltinCommandLoader) as Mock).mockClear();
+    (vi.mocked(FileCommandLoader) as Mock).mockClear();
+    (vi.mocked(McpPromptLoader) as Mock).mockClear();
     mockBuiltinLoadCommands.mockResolvedValue([]);
     mockFileLoadCommands.mockResolvedValue([]);
     mockMcpLoadCommands.mockResolvedValue([]);
@@ -111,7 +110,6 @@ describe('useSlashCommandProcessor', () => {
     builtinCommands: SlashCommand[] = [],
     fileCommands: SlashCommand[] = [],
     mcpCommands: SlashCommand[] = [],
-    setIsProcessing = vi.fn(),
   ) => {
     mockBuiltinLoadCommands.mockResolvedValue(Object.freeze(builtinCommands));
     mockFileLoadCommands.mockResolvedValue(Object.freeze(fileCommands));
@@ -133,8 +131,8 @@ describe('useSlashCommandProcessor', () => {
         vi.fn(), // toggleCorgiMode
         mockSetQuittingMessages,
         vi.fn(), // openPrivacyNotice
-        vi.fn(), // toggleVimEnabled
-        setIsProcessing,
+        vi.fn().mockResolvedValue(true), // toggleVimEnabled
+        mockSetIsProcessing,
       ),
     );
 
@@ -142,7 +140,7 @@ describe('useSlashCommandProcessor', () => {
   };
 
   describe('Initialization and Command Loading', () => {
-    it('should initialize CommandService with all required loaders', () => {
+    it('should initialize all command loaders', () => {
       setupProcessorHook();
       expect(BuiltinCommandLoader).toHaveBeenCalledWith(mockConfig);
       expect(FileCommandLoader).toHaveBeenCalledWith(mockConfig);
@@ -178,35 +176,6 @@ describe('useSlashCommandProcessor', () => {
         commands.push(createTestCommand({ name: 'rogue' }));
       }).toThrow(TypeError);
     });
-
-    it('should prioritize built-in commands over file-based commands of the same name', async () => {
-      const builtinAction = vi.fn();
-      const fileAction = vi.fn();
-
-      const builtinCommand = createTestCommand({
-        name: 'override',
-        description: 'builtin',
-        action: builtinAction,
-      });
-      const fileCommand = createTestCommand(
-        { name: 'override', description: 'file', action: fileAction },
-        CommandKind.FILE,
-      );
-
-      const result = setupProcessorHook([builtinCommand], [fileCommand]);
-
-      await waitFor(() => {
-        expect(result.current.slashCommands).toHaveLength(2);
-      });
-
-      await act(async () => {
-        await result.current.handleSlashCommand('/override');
-      });
-
-      // The built-in command comes first in the concatenated array and is found first.
-      expect(builtinAction).toHaveBeenCalledTimes(1);
-      expect(fileAction).not.toHaveBeenCalled();
-    });
   });
 
   describe('Command Execution Logic', () => {
@@ -233,12 +202,10 @@ describe('useSlashCommandProcessor', () => {
       const parentCommand: SlashCommand = {
         name: 'parent',
         description: 'a parent command',
-        kind: CommandKind.BUILT_IN,
         subCommands: [
           {
             name: 'child1',
             description: 'First child.',
-            kind: CommandKind.BUILT_IN,
           },
         ],
       };
@@ -253,9 +220,8 @@ describe('useSlashCommandProcessor', () => {
       expect(mockAddItem).toHaveBeenLastCalledWith(
         {
           type: MessageType.INFO,
-          text: expect.stringContaining(
-            "Command '/parent' requires a subcommand.",
-          ),
+          text: `Command '/parent' requires a subcommand. Available:
+  - child1: First child.`,
         },
         expect.any(Number),
       );
@@ -266,12 +232,10 @@ describe('useSlashCommandProcessor', () => {
       const parentCommand: SlashCommand = {
         name: 'parent',
         description: 'a parent command',
-        kind: CommandKind.BUILT_IN,
         subCommands: [
           {
             name: 'child',
             description: 'a child command',
-            kind: CommandKind.BUILT_IN,
             action: childAction,
           },
         ],
@@ -289,23 +253,37 @@ describe('useSlashCommandProcessor', () => {
         expect.objectContaining({
           services: expect.objectContaining({
             config: mockConfig,
+            settings: mockSettings,
+            git: expect.any(Object),
+            logger: expect.any(Object),
           }),
           ui: expect.objectContaining({
             addItem: mockAddItem,
+            clear: expect.any(Function),
+            loadHistory: mockLoadHistory,
           }),
+          session: expect.objectContaining({
+            stats: {},
+            sessionShellAllowlist: expect.any(Set),
+          }),
+          commands: expect.any(Array),
+          invocation: {
+            raw: '/parent child with args',
+            name: 'child',
+            args: 'with args',
+          },
         }),
         'with args',
       );
     });
 
     it('should set isProcessing to true during execution and false afterwards', async () => {
-      const mockSetIsProcessing = vi.fn();
       const command = createTestCommand({
         name: 'long-running',
         action: () => new Promise((resolve) => setTimeout(resolve, 50)),
       });
 
-      const result = setupProcessorHook([command], [], [], mockSetIsProcessing);
+      const result = setupProcessorHook([command]);
       await waitFor(() => expect(result.current.slashCommands).toHaveLength(1));
 
       const executionPromise = act(async () => {
@@ -342,12 +320,16 @@ describe('useSlashCommandProcessor', () => {
     });
 
     it('should handle "load_history" action', async () => {
+      const historyToLoad = [{ type: MessageType.USER, text: 'old prompt' }];
+      const clientHistoryToLoad = [
+        { role: 'user', parts: [{ text: 'old prompt' }] },
+      ];
       const command = createTestCommand({
         name: 'load',
         action: vi.fn().mockResolvedValue({
           type: 'load_history',
-          history: [{ type: MessageType.USER, text: 'old prompt' }],
-          clientHistory: [{ role: 'user', parts: [{ text: 'old prompt' }] }],
+          history: historyToLoad,
+          clientHistory: clientHistoryToLoad,
         }),
       });
       const result = setupProcessorHook([command]);
@@ -357,11 +339,9 @@ describe('useSlashCommandProcessor', () => {
         await result.current.handleSlashCommand('/load');
       });
 
+      expect(mockSetHistory).toHaveBeenCalledWith(clientHistoryToLoad);
       expect(mockClearItems).toHaveBeenCalledTimes(1);
-      expect(mockAddItem).toHaveBeenCalledWith(
-        { type: 'user', text: 'old prompt' },
-        expect.any(Number),
-      );
+      expect(mockAddItem).toHaveBeenCalledWith(historyToLoad[0], 0);
     });
 
     describe('with fake timers', () => {
@@ -400,20 +380,17 @@ describe('useSlashCommandProcessor', () => {
       });
     });
 
-    it('should handle "submit_prompt" action returned from a file-based command', async () => {
-      const fileCommand = createTestCommand(
-        {
-          name: 'filecmd',
-          description: 'A command from a file',
-          action: async () => ({
-            type: 'submit_prompt',
-            content: 'The actual prompt from the TOML file.',
-          }),
-        },
-        CommandKind.FILE,
-      );
+    it('should handle "submit_prompt" action', async () => {
+      const command = createTestCommand({
+        name: 'filecmd',
+        description: 'A command from a file',
+        action: async () => ({
+          type: 'submit_prompt',
+          content: 'The actual prompt.',
+        }),
+      });
 
-      const result = setupProcessorHook([], [fileCommand]);
+      const result = setupProcessorHook([], [command]);
       await waitFor(() => expect(result.current.slashCommands).toHaveLength(1));
 
       let actionResult;
@@ -423,43 +400,11 @@ describe('useSlashCommandProcessor', () => {
 
       expect(actionResult).toEqual({
         type: 'submit_prompt',
-        content: 'The actual prompt from the TOML file.',
+        content: 'The actual prompt.',
       });
 
       expect(mockAddItem).toHaveBeenCalledWith(
         { type: MessageType.USER, text: '/filecmd' },
-        expect.any(Number),
-      );
-    });
-
-    it('should handle "submit_prompt" action returned from a mcp-based command', async () => {
-      const mcpCommand = createTestCommand(
-        {
-          name: 'mcpcmd',
-          description: 'A command from mcp',
-          action: async () => ({
-            type: 'submit_prompt',
-            content: 'The actual prompt from the mcp command.',
-          }),
-        },
-        CommandKind.MCP_PROMPT,
-      );
-
-      const result = setupProcessorHook([], [], [mcpCommand]);
-      await waitFor(() => expect(result.current.slashCommands).toHaveLength(1));
-
-      let actionResult;
-      await act(async () => {
-        actionResult = await result.current.handleSlashCommand('/mcpcmd');
-      });
-
-      expect(actionResult).toEqual({
-        type: 'submit_prompt',
-        content: 'The actual prompt from the mcp command.',
-      });
-
-      expect(mockAddItem).toHaveBeenCalledWith(
-        { type: MessageType.USER, text: '/mcpcmd' },
         expect.any(Number),
       );
     });
@@ -587,7 +532,7 @@ describe('useSlashCommandProcessor', () => {
       // Verify the session-wide allowlist was NOT permanently updated.
       // Re-render the hook by calling a no-op command to get the latest context.
       await act(async () => {
-        result.current.handleSlashCommand('/no-op');
+        await result.current.handleSlashCommand('/no-op');
       });
       const finalContext = result.current.commandContext;
       expect(finalContext.session.sessionShellAllowlist.size).toBe(0);
@@ -704,24 +649,75 @@ describe('useSlashCommandProcessor', () => {
     });
   });
 
-  describe('Command Precedence', () => {
+  describe('Command Precedence and Naming', () => {
+    it('should rename built-in commands when conflicting with file-based commands', async () => {
+      const builtinAction = vi.fn();
+      const fileAction = vi.fn();
+
+      const builtinCommand = createTestCommand({
+        name: 'override',
+        description: 'builtin',
+        action: builtinAction,
+      });
+      const fileCommand = createTestCommand({
+        name: 'override',
+        description: 'file',
+        action: fileAction,
+      });
+
+      const result = setupProcessorHook([builtinCommand], [fileCommand]);
+
+      await waitFor(() => {
+        expect(result.current.slashCommands).toHaveLength(2);
+      });
+
+      const originalCmd = result.current.slashCommands.find(
+        (cmd) => cmd.name === 'override',
+      );
+      const renamedCmd = result.current.slashCommands.find(
+        (cmd) => cmd.name === 'builtin:override',
+      );
+
+      expect(originalCmd).toBeDefined();
+      expect(originalCmd?.description).toBe('file');
+      expect(renamedCmd).toBeDefined();
+      expect(renamedCmd?.description).toBe('builtin');
+      expect(renamedCmd?.displayName).toBe('override');
+
+      // Execute the original name, should trigger the file command
+      await act(async () => {
+        await result.current.handleSlashCommand('/override');
+      });
+
+      expect(fileAction).toHaveBeenCalledTimes(1);
+      expect(builtinAction).not.toHaveBeenCalled();
+
+      fileAction.mockClear();
+
+      // Execute the renamed command
+      await act(async () => {
+        await result.current.handleSlashCommand('/builtin:override');
+      });
+
+      expect(builtinAction).toHaveBeenCalledTimes(1);
+      expect(fileAction).not.toHaveBeenCalled();
+    });
+
     it('should rename mcp-based commands when conflicting with file-based commands', async () => {
       const mcpAction = vi.fn();
       const fileAction = vi.fn();
 
-      const mcpCommand = createTestCommand(
-        {
-          name: 'override',
-          description: 'mcp',
-          action: mcpAction,
-          serverName: 'test_server',
-        },
-        CommandKind.MCP_PROMPT,
-      );
-      const fileCommand = createTestCommand(
-        { name: 'override', description: 'file', action: fileAction },
-        CommandKind.FILE,
-      );
+      const mcpCommand = createTestCommand({
+        name: 'override',
+        description: 'mcp',
+        action: mcpAction,
+        serverName: 'test_server',
+      });
+      const fileCommand = createTestCommand({
+        name: 'override',
+        description: 'file',
+        action: fileAction,
+      });
 
       const result = setupProcessorHook([], [fileCommand], [mcpCommand]);
 
@@ -740,6 +736,7 @@ describe('useSlashCommandProcessor', () => {
       expect(originalCmd?.description).toBe('file');
       expect(renamedCmd).toBeDefined();
       expect(renamedCmd?.description).toBe('mcp');
+      expect(renamedCmd?.displayName).toBe('override');
 
       await act(async () => {
         await result.current.handleSlashCommand('/override');
@@ -759,17 +756,14 @@ describe('useSlashCommandProcessor', () => {
         action: quitAction,
       });
 
-      const exitCommand = createTestCommand(
-        {
-          name: 'exit',
-          action: exitAction,
-        },
-        CommandKind.FILE,
-      );
+      const exitCommand = createTestCommand({
+        name: 'exit',
+        action: exitAction,
+      });
 
       // The order of commands in the final loaded array is not guaranteed,
       // so the test must work regardless of which comes first.
-      const result = setupProcessorHook([quitCommand], [exitCommand]);
+      const result = setupProcessorHook([quitCommand, exitCommand]);
 
       await waitFor(() => {
         expect(result.current.slashCommands).toHaveLength(2);
@@ -785,19 +779,11 @@ describe('useSlashCommandProcessor', () => {
       expect(quitAction).not.toHaveBeenCalled();
     });
 
-    it('should add an overridden command to the history', async () => {
-      const quitCommand = createTestCommand({
-        name: 'quit',
-        altNames: ['exit'],
-        action: vi.fn(),
-      });
-      const exitCommand = createTestCommand(
-        { name: 'exit', action: vi.fn() },
-        CommandKind.FILE,
-      );
+    it('should add an executed command to the history', async () => {
+      const exitCommand = createTestCommand({ name: 'exit', action: vi.fn() });
 
-      const result = setupProcessorHook([quitCommand], [exitCommand]);
-      await waitFor(() => expect(result.current.slashCommands).toHaveLength(2));
+      const result = setupProcessorHook([], [exitCommand]);
+      await waitFor(() => expect(result.current.slashCommands).toHaveLength(1));
 
       await act(async () => {
         await result.current.handleSlashCommand('/exit');
@@ -830,14 +816,15 @@ describe('useSlashCommandProcessor', () => {
           vi.fn(), // toggleCorgiMode
           mockSetQuittingMessages,
           vi.fn(), // openPrivacyNotice
-          vi.fn(), // toggleVimEnabled
-          vi.fn(), // setIsProcessing
+          vi.fn().mockResolvedValue(true), // toggleVimEnabled
+          mockSetIsProcessing,
         ),
       );
 
       unmount();
 
       expect(abortSpy).toHaveBeenCalledTimes(1);
+      abortSpy.mockRestore();
     });
   });
 
