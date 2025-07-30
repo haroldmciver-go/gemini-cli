@@ -148,6 +148,22 @@ describe('useSlashCommandProcessor', () => {
       expect(mockMcpLoadCommands).toHaveBeenCalledTimes(1);
     });
 
+    it('should provide an immutable array of commands to consumers', async () => {
+      const testCommand = createTestCommand({ name: 'test' });
+      const result = setupProcessorHook([testCommand]);
+
+      await waitFor(() => {
+        expect(result.current.slashCommands).toHaveLength(1);
+      });
+
+      const commands = result.current.slashCommands;
+
+      expect(() => {
+        // @ts-expect-error - We are intentionally testing a violation of the readonly type.
+        commands.push(createTestCommand({ name: 'rogue' }));
+      }).toThrow(TypeError);
+    });
+
     it('should prioritize built-in commands over file-based commands of the same name', async () => {
       const builtinAction = vi.fn();
       const fileAction = vi.fn();

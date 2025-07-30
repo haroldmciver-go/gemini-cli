@@ -225,7 +225,11 @@ export const useSlashCommandProcessor = (
           originalName,
         });
       }
-      setCommands(finalCommands.sort((a, b) => a.name.localeCompare(b.name)));
+      setCommands(
+        Object.freeze(
+          finalCommands.sort((a, b) => a.name.localeCompare(b.name)),
+        ),
+      );
     };
 
     load();
