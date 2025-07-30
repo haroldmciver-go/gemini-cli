@@ -196,7 +196,6 @@ describe('useSlashCommandProcessor', () => {
       const result = setupProcessorHook([builtinCommand], [fileCommand]);
 
       await waitFor(() => {
-        // The processor loads both commands without de-duplicating.
         expect(result.current.slashCommands).toHaveLength(2);
       });
 
@@ -715,7 +714,7 @@ describe('useSlashCommandProcessor', () => {
           name: 'override',
           description: 'mcp',
           action: mcpAction,
-          serverName: 'test_server', // This is needed for predictable renaming
+          serverName: 'test_server',
         },
         CommandKind.MCP_PROMPT,
       );
