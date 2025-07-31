@@ -370,7 +370,8 @@ export const useSlashCommandProcessor = (
                     addItem(
                       {
                         type: MessageType.GEMINI,
-                        text: `Executing prompt "${result.promptName}"\n\n${promptContent}`,
+                        text: `Executing prompt "${result.promptName}"...`,
+                        details: promptContent,
                       },
                       Date.now(),
                     );
