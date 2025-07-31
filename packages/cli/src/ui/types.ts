@@ -224,6 +224,8 @@ export interface ConsoleMessageItem {
 export interface SubmitPromptResult {
   type: 'submit_prompt';
   content: string;
+  promptName?: string;
+  promptArgs?: Record<string, unknown>;
 }
 
 /**
