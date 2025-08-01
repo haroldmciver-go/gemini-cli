@@ -124,8 +124,8 @@ export class McpPromptLoader implements ICommandLoader {
               }
 
               const content = result.messages
-                ?.map((message) => message.content.text)
-                .join('\n');
+                ?.map((message) => `${message.role}: ${message.content.text}`)
+                .join('\n\n');
 
               if (!content) {
                 return {
