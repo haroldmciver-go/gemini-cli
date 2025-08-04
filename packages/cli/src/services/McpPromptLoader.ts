@@ -123,11 +123,12 @@ export class McpPromptLoader implements ICommandLoader {
                 };
               }
 
-              const content = result.messages
-                ?.map((message) => `${message.role}: ${message.content.text}`)
-                .join('\n\n');
+              const content =
+                result.messages?.map((message) => ({
+                  text: `${message.role}: ${message.content.text}`,
+                })) || [];
 
-              if (!content) {
+              if (content.length === 0) {
                 return {
                   type: 'message',
                   messageType: 'error',
