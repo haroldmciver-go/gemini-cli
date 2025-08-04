@@ -46,6 +46,10 @@ describe('McpPromptLoader', () => {
             role: 'model',
             content: { text: 'Hi there!' },
           },
+          {
+            role: 'user',
+            content: { text: 'How are you?' },
+          },
         ],
       }),
     };
@@ -61,8 +65,9 @@ describe('McpPromptLoader', () => {
     expect(result.type).toBe('submit_prompt');
     if (result.type === 'submit_prompt') {
       expect(result.content).toEqual([
-        { text: 'user: Hello' },
-        { text: 'model: Hi there!' },
+        { text: 'Hello' },
+        { text: 'Hi there!' },
+        { text: 'How are you?' },
       ]);
     }
   });
@@ -89,7 +94,7 @@ describe('McpPromptLoader', () => {
 
     expect(result.type).toBe('submit_prompt');
     if (result.type === 'submit_prompt') {
-      expect(result.content).toEqual([{ text: 'user: Single message' }]);
+      expect(result.content).toEqual([{ text: 'Single message' }]);
     }
   });
 
@@ -114,9 +119,7 @@ describe('McpPromptLoader', () => {
 
     expect(result.type).toBe('submit_prompt');
     if (result.type === 'submit_prompt') {
-      expect(result.content).toEqual([
-        { text: 'undefined: Message without role' },
-      ]);
+      expect(result.content).toEqual([{ text: 'Message without role' }]);
     }
   });
 

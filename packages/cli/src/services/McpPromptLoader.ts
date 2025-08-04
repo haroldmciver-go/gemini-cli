@@ -17,6 +17,7 @@ import {
 } from '../ui/commands/types.js';
 import { ICommandLoader } from './types.js';
 import { PromptArgument } from '@modelcontextprotocol/sdk/types.js';
+import { type PartListUnion } from '@google/genai';
 
 /**
  * Discovers and loads executable slash commands from prompts exposed by
@@ -123,12 +124,7 @@ export class McpPromptLoader implements ICommandLoader {
                 };
               }
 
-              const content =
-                result.messages?.map((message) => ({
-                  text: `${message.role}: ${message.content.text}`,
-                })) || [];
-
-              if (content.length === 0) {
+              if (!result.messages || result.messages.length === 0) {
                 return {
                   type: 'message',
                   messageType: 'error',
@@ -136,6 +132,28 @@ export class McpPromptLoader implements ICommandLoader {
                     'Received an empty or invalid prompt response from the server.',
                 };
               }
+
+              const allMessageContents = result.messages.map((m) => m.content);
+
+              const isPureStringPrompt = allMessageContents.every(
+                (content) => typeof content === 'string',
+              );
+
+              if (isPureStringPrompt) {
+                return {
+                  type: 'submit_prompt',
+                  content: (allMessageContents as string[]).join('\n\n'),
+                };
+              }
+
+              const content: PartListUnion = allMessageContents.flatMap(
+                (content) => {
+                  if (typeof content === 'string') {
+                    return [content];
+                  }
+                  return content as PartListUnion;
+                },
+              );
 
               return {
                 type: 'submit_prompt',
