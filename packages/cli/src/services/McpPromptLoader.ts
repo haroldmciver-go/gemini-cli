@@ -176,15 +176,19 @@ export class McpPromptLoader implements ICommandLoader {
     const argValues: { [key: string]: string } = {};
     const promptInputs: Record<string, unknown> = {};
 
-    // arg parsing: --key="value" or --key=value
-    const namedArgRegex = /--([^=]+)=(?:"((?:\\.|[^"\\])*)"|([^ ]*))/g;
+    // Pre-process to fix common syntax issues like --key"value"
+    userArgs = userArgs.replace(/--([a-zA-Z0-9_.-]+)(["'])/g, '--$1=$2');
+
+    // arg parsing: --key="value", --key='value', or --key=value
+    const namedArgRegex =
+      /--([^=]+)=(?:\"((?:\\.|[^\\"\\])*)\"|'((?:\\.|[^'\\])*)'|([^ ]*))/g;
     let match;
     const remainingArgs: string[] = [];
     let lastIndex = 0;
 
     while ((match = namedArgRegex.exec(userArgs)) !== null) {
       const key = match[1];
-      const value = match[2] ?? match[3]; // Quoted or unquoted value
+      const value = match[2] ?? match[3] ?? match[4]; // Quoted or unquoted value
       argValues[key] = value;
       // Capture text between matches as potential positional args
       if (match.index > lastIndex) {
@@ -198,7 +202,7 @@ export class McpPromptLoader implements ICommandLoader {
       remainingArgs.push(userArgs.substring(lastIndex).trim());
     }
 
-    const positionalArgs = remainingArgs.join(' ').split(/ +/);
+    const positionalArgs = remainingArgs.join(' ').split(/ +/).filter(Boolean);
 
     if (!promptArgs) {
       return promptInputs;
