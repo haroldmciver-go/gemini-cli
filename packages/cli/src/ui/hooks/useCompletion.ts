@@ -188,8 +188,14 @@ export function useCompletion(
       // Traverse the Command Tree using the tentative completed path
       let currentLevel: readonly SlashCommand[] | undefined = slashCommands;
       let leafCommand: SlashCommand | null = null;
+      const commandPathFinalParts: string[] = [];
 
       for (const part of commandPathParts) {
+        // If a part looks like a flag, stop command traversal.
+        if (part.startsWith('-')) {
+          break;
+        }
+
         if (!currentLevel) {
           leafCommand = null;
           currentLevel = [];
@@ -203,6 +209,7 @@ export function useCompletion(
           currentLevel = found.subCommands as
             | readonly SlashCommand[]
             | undefined;
+          commandPathFinalParts.push(part);
         } else {
           leafCommand = null;
           currentLevel = [];
@@ -245,7 +252,7 @@ export function useCompletion(
         }
       }
 
-      const depth = commandPathParts.length;
+      const depth = commandPathFinalParts.length;
 
       // Provide Suggestions based on the now-corrected context
 
