@@ -106,7 +106,6 @@ export function useCompletion(): UseCompletionReturn {
       return newActiveIndex;
     });
   }, [suggestions.length]);
-
   return {
     suggestions,
     activeSuggestionIndex,
