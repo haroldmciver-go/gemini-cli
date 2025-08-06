@@ -150,7 +150,6 @@ export class McpPromptLoader implements ICommandLoader {
             }
 
             const usedArgNames = new Set<string>();
-            // Regex to find *completed* named arguments, which must have an '='
             const completedArgRegex =
               /--([^=]+)=(?:"((?:\\.|[^\\"\\])*)"|'((?:\\.|[^'\\])*)'|[^ ]*)/g;
 
@@ -158,9 +157,7 @@ export class McpPromptLoader implements ICommandLoader {
             while ((match = completedArgRegex.exec(partialArg)) !== null) {
               usedArgNames.add(match[1].trim());
             }
-
-            // Now, find the word being typed. This is the last segment of text
-            // that isn't part of a completed argument.
+            // Find the word being typed. This is the last segment of text
             const lastCompletedMatch = Array.from(
               partialArg.matchAll(completedArgRegex),
             ).pop();
@@ -178,21 +175,13 @@ export class McpPromptLoader implements ICommandLoader {
               (arg) => !usedArgNames.has(arg.name),
             );
 
-            // If the user is not typing an argument name, suggest all available.
             if (!currentWord.startsWith('--')) {
-              // This handles when the user has typed a full argument and a space.
-              // e.g., ` /my-prompt --arg1="foo" `
-              // `currentWord` would be an empty string.
-              // We should suggest all available arguments.
               if (currentWord.trim() === '') {
                 return availableArgs.map((arg) => `--${arg.name}=""`);
               }
-              // Otherwise, the user might be typing a positional argument, so no suggestions.
               return [];
             }
 
-            // The user is typing an argument name.
-            // e.g. --arg2 or --arg2= or --arg2="val
             const currentArgName = currentWord.substring(2).split('=')[0];
 
             return availableArgs
