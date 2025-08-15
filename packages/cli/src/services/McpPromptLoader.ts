@@ -9,6 +9,7 @@ import {
   getErrorMessage,
   getMCPServerPrompts,
 } from '@google/gemini-cli-core';
+import { PromptArgument } from '@modelcontextprotocol/sdk/types.js';
 import {
   CommandContext,
   CommandKind,
@@ -16,7 +17,6 @@ import {
   SlashCommandActionReturn,
 } from '../ui/commands/types.js';
 import { ICommandLoader } from './types.js';
-import { PromptArgument } from '@modelcontextprotocol/sdk/types.js';
 
 /**
  * Discovers and loads executable slash commands from prompts exposed by
@@ -149,44 +149,18 @@ export class McpPromptLoader implements ICommandLoader {
               return [];
             }
 
-            const usedArgNames = new Set<string>();
-            const completedArgRegex =
-              /--([^=]+)=(?:"((?:\\.|[^\\"\\])*)"|'((?:\\.|[^'\\])*)'|[^ ]*)/g;
-
-            let match;
-            while ((match = completedArgRegex.exec(partialArg)) !== null) {
-              usedArgNames.add(match[1].trim());
-            }
-            // Find the word being typed. This is the last segment of text
-            const lastCompletedMatch = Array.from(
-              partialArg.matchAll(completedArgRegex),
-            ).pop();
-
-            const searchString = lastCompletedMatch
-              ? partialArg.substring(
-                  lastCompletedMatch.index! + lastCompletedMatch[0].length,
-                )
-              : partialArg;
-
-            const words = searchString.trim().split(/\s+/);
-            const currentWord = words[words.length - 1] || '';
-
-            const availableArgs = prompt.arguments.filter(
-              (arg) => !usedArgNames.has(arg.name),
+            const suggestions: string[] = [];
+            const usedArgNames = new Set(
+              (partialArg.match(/--([^=]+)/g) || []).map((s) => s.substring(2)),
             );
 
-            if (!currentWord.startsWith('--')) {
-              if (currentWord.trim() === '') {
-                return availableArgs.map((arg) => `--${arg.name}=""`);
+            for (const arg of prompt.arguments) {
+              if (!usedArgNames.has(arg.name)) {
+                suggestions.push(`--${arg.name}=""`);
               }
-              return [];
             }
 
-            const currentArgName = currentWord.substring(2).split('=')[0];
-
-            return availableArgs
-              .filter((arg) => arg.name.startsWith(currentArgName))
-              .map((arg) => `--${arg.name}=""`);
+            return suggestions;
           },
         };
         promptCommands.push(newPromptCommand);
@@ -201,9 +175,6 @@ export class McpPromptLoader implements ICommandLoader {
   ): Record<string, unknown> | Error {
     const argValues: { [key: string]: string } = {};
     const promptInputs: Record<string, unknown> = {};
-
-    // Pre-process to fix common syntax issues like --key"value"
-    userArgs = userArgs.replace(/--([a-zA-Z0-9_.-]+)(["'])/g, '--$1=$2');
 
     // arg parsing: --key="value", --key='value', or --key=value
     const namedArgRegex =
@@ -228,7 +199,7 @@ export class McpPromptLoader implements ICommandLoader {
       remainingArgs.push(userArgs.substring(lastIndex).trim());
     }
 
-    const positionalArgs = remainingArgs.join(' ').split(/ +/).filter(Boolean);
+    const positionalArgs = remainingArgs.join(' ').split(/ +/);
 
     if (!promptArgs) {
       return promptInputs;
