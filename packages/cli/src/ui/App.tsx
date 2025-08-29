@@ -809,7 +809,7 @@ const App = ({ config, settings, startupWarnings = [], version }: AppProps) => {
         keyMatchers[Command.TOGGLE_MCP_PROMPT_DETAIL](key) &&
         !enteringConstrainHeightMode
       ) {
-        setShowPromptDetails((prev) => !prev);
+        setShowPromptDetails((prev: boolean) => !prev);
         setConstrainHeight(false);
       }
     },
